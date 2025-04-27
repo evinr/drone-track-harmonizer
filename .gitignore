@@ -1,2 +1,5 @@
 *.csv
 .DS_Store
+validation/harmonized_drones.kml
+validation/harmonized_drones.gpx
+python/results/dji_correlations.csv
