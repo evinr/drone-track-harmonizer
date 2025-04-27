@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Drone Track Harmonizer">
+  <wpt lat="41.754118001691424" lon="-99.80345125920356">
+    <name>Sample Drone</name>
+    <time>2024-08-01T12:42:54</time>
+  </wpt>
+  <trk>
+    <name>Sample Drone</name>
+    <trkseg>
+      <trkpt lat="41.754118001691424" lon="-99.80345125920356">
+        <time>2024-08-01T12:42:54</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

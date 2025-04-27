@@ -1,0 +1,11 @@
+RF Data Summary:
+Total rows: 2881609
+OcuSync entries: 2881609
+Unique bandwidths: 3
+Time range: 2024-07-01 13:33:58.791000 to 2024-08-05 00:11:20.175000
+
+DJI Data Summary:
+Total rows: 109991
+Unique drones: 257
+Drone types: Mini 3, Mini 2 SE, Mavic 3E/3T/3M, Mavic Mini 2, Mavic Air 2, Mavic Mini, Mavic 3 Pro, M2EA, Mini 4 Pro, Mini 3 Pro, DJI Air 2S, Mavic Pro, Air 3, FPV, Mavic Air, Mavic 2, Mavic 3C, 107, Mavic 3, DJI Mini 4K, Mini SE, Unknown, Avata 2, Phantom 3 Series P, M30, M300, Spark
+Time range: 2024-07-01 12:00:21 to 2024-08-05 04:33:46

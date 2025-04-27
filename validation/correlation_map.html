@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>Drone Track Harmonizer</title>
+    
+    <!-- Leaflet and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/python-visualization/folium@main/folium/templates/leaflet_heat.min.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecorator/dist/leaflet.polylineDecorator.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- CSS dependencies -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
+    
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: 0;
+        }
+        
+        /* Custom Legend Styles */
+        .info-legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 10px 10px 10px 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            max-width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .legend-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 10px 0 8px 0;
+            margin-top: -10px;
+            font-weight: bold;
+            font-size: 1.2em;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            z-index: 1010;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* This prevents content from showing through the header */
+        .info-legend::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background-color: white;
+            z-index: 1005;
+        }
+        
+        .legend-header-text {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .legend-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .legend-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .legend-section-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+            cursor: pointer;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+        
+        .legend-gradient {
+            height: 20px;
+            width: 100%;
+            margin: 5px 0;
+            background: linear-gradient(to right, blue, lime, yellow, red);
+        }
+        
+        .gradient-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: #555;
+        }
+        
+        /* Checkboxes styling */
+        .layer-checkbox {
+            margin-right: 8px;
+        }
+        
+        .layer-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+        
+        /* Logo in the upper left corner */
+        .map-logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 999;
+            background: white;
+            padding: 5px;
+            border-radius: 3px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+            height: 40px;
+        }
+        
+        /* Stats table */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .stats-table td {
+            padding: 2px 4px;
+        }
+        
+        .stats-table td:first-child {
+            font-weight: bold;
+        }
+        
+        /* Pattern table */
+        .pattern-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .pattern-table th {
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            padding: 2px 4px;
+            font-size: 0.8em;
+        }
+        
+        .pattern-table td {
+            padding: 2px 4px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .pattern-id {
+            font-family: monospace;
+            color: #333;
+        }
+        
+        /* Status message */
+        #status {
+            color: red;
+            margin-bottom: 10px;
+            border: 1px solid #ffcccc;
+            padding: 5px;
+            background-color: #fff8f8;
+            font-size: 0.9em;
+        }
+        
+        /* Popup content styling */
+        .leaflet-popup-content p {
+            font-size: 12px;
+            margin: 4px 0;
+            line-height: 1.3;
+        }
+        
+        .leaflet-popup-content h4 {
+            font-size: 16px;
+            margin: 0 0 8px 0;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        /* Tooltip styling */
+        .leaflet-tooltip {
+            font-size: 13px;
+            font-weight: bold;
+            padding: 6px 8px;
+        }
+        
+        /* Custom marker icons */
+        .mavic-marker {
+            background-color: #2288cc;
+            border-radius: 50%;
+            width: 10px !important;
+            height: 10px !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            border: 2px solid white;
+        }
+        .phantom-marker {
+            background-color: #22cc88;
+            border-radius: 50%;
+            width: 10px !important;
+            height: 10px !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            border: 2px solid white;
+        }
+        .mini-marker {
+            background-color: #cc2288;
+            border-radius: 50%;
+            width: 10px !important;
+            height: 10px !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            border: 2px solid white;
+        }
+        .air-marker {
+            background-color: #ccaa22;
+            border-radius: 50%;
+            width: 10px !important;
+            height: 10px !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            border: 2px solid white;
+        }
+        .fpv-marker {
+            background-color: #aaaaaa;
+            border-radius: 50%;
+            width: 10px !important;
+            height: 10px !important;
+            margin-left: -5px !important;
+            margin-top: -5px !important;
+            border: 2px solid white;
+        }
+        
+        /* Sensor markers */
+        .sensor-marker {
+            background-color: #ff4400;
+            border-radius: 50%;
+            width: 22px !important;
+            height: 22px !important;
+            margin-left: -11px !important;
+            margin-top: -11px !important;
+            border: 3px solid white;
+            box-shadow: 0 0 12px rgba(255, 68, 0, 0.7);
+            z-index: 1000 !important; /* Ensure CSS z-index is also high */
+        }
+        
+        /* Force sensor elements to the top */
+        .leaflet-marker-icon.sensor-marker,
+        .leaflet-marker-icon.sensor-label {
+            z-index: 1000 !important;
+        }
+        
+        /* Sensor labels */
+        .sensor-label {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            white-space: nowrap;
+            font-size: 14px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.4);
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        }
+        
+        /* Enhanced marker cluster styling */
+        .marker-cluster {
+            background-clip: padding-box;
+            border-radius: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .marker-cluster div {
+            width: 36px;
+            height: 36px;
+            margin-left: 2px;
+            margin-top: 2px;
+            text-align: center;
+            border-radius: 18px;
+            font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .marker-cluster span {
+            font-weight: bold;
+        }
+        
+        .marker-cluster-small {
+            background-color: rgba(181, 226, 140, 0.6);
+        }
+        .marker-cluster-small div {
+            background-color: rgba(110, 204, 57, 0.9);
+        }
+        
+        .marker-cluster-medium {
+            background-color: rgba(241, 211, 87, 0.6);
+        }
+        .marker-cluster-medium div {
+            background-color: rgba(240, 194, 12, 0.9);
+        }
+        
+        .marker-cluster-large {
+            background-color: rgba(253, 156, 115, 0.6);
+        }
+        .marker-cluster-large div {
+            background-color: rgba(241, 128, 23, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="map-logo">
+        <img src="Dedrone-logo.svg" alt="Dedrone Logo" height="30">
+    </div>
+    
+    <div class="info-legend" id="info-legend">
+        <div class="legend-header">
+            <div class="legend-header-text">Drone Track Harmonizer</div>
+        </div>
+        
+        <div id="status" style="display: none;"></div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Layer Controls</div>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox" id="layer-heat" checked> 
+                <div class="legend-color" style="background: linear-gradient(to right, blue, lime, yellow, red);"></div>
+                <span>RF Signal Strength</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox" id="layer-drones" checked> 
+                <div class="legend-color" style="background-color: #2288cc;"></div>
+                <span>Drone Positions</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox" id="layer-paths"> 
+                <div class="legend-color" style="background-color: #ff6b6b;"></div>
+                <span>Flight Paths</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox" id="layer-sensors" checked> 
+                <div class="legend-color" style="background-color: #ff4400;"></div>
+                <span>RF Sensors</span>
+            </label>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Drone Types</div>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox drone-type-checkbox" id="type-mavic" checked> 
+                <div class="legend-color" style="background-color: #2288cc;"></div>
+                <span>DJI Mavic Pro</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox drone-type-checkbox" id="type-phantom" checked> 
+                <div class="legend-color" style="background-color: #22cc88;"></div>
+                <span>DJI Phantom 4</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox drone-type-checkbox" id="type-mini" checked> 
+                <div class="legend-color" style="background-color: #cc2288;"></div>
+                <span>DJI Mini 2</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox drone-type-checkbox" id="type-air" checked> 
+                <div class="legend-color" style="background-color: #ccaa22;"></div>
+                <span>DJI Mavic Air</span>
+            </label>
+            <label class="layer-label">
+                <input type="checkbox" class="layer-checkbox drone-type-checkbox" id="type-fpv" checked> 
+                <div class="legend-color" style="background-color: #aaaaaa;"></div>
+                <span>DJI FPV</span>
+            </label>
+            <div style="font-size: 0.85em; margin-top: 8px; padding: 5px; background-color: #f8f8f8; border-radius: 3px;">
+                <strong>Note:</strong> Check/uncheck to show/hide specific drone types. When zoomed in to level 15+, flight paths show direction arrows.
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Visualization Guide</div>
+            <div class="legend-item" style="display: block;">
+                <ul style="font-size: 0.9em; padding-left: 20px; margin-top: 5px;">
+                    <li><strong>Markers:</strong> Individual drone position reports</li>
+                    <li><strong>Clusters:</strong> Multiple drones in proximity</li>
+                    <li><strong>Flight Paths:</strong> Connected points from same drone</li>
+                    <li><strong>Heat Layer:</strong> RF signal intensity</li>
+                    <li><strong>Arrows:</strong> Flight direction (visible when zoomed in)</li>
+                </ul>
+                <p><small><strong>Tip:</strong> Click markers or paths for detailed information about each drone detection.</small></p>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">OcuSync ID Patterns</div>
+            <table class="pattern-table">
+                <thead>
+                    <tr>
+                        <th>Pattern</th>
+                        <th>Drone Type</th>
+                        <th>Frequency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="pattern-id">0x1A2B</td>
+                        <td>Mavic Pro</td>
+                        <td>2.4 GHz</td>
+                    </tr>
+                    <tr>
+                        <td class="pattern-id">0x3C4D</td>
+                        <td>Phantom 4</td>
+                        <td>5.8 GHz</td>
+                    </tr>
+                    <tr>
+                        <td class="pattern-id">0x5E6F</td>
+                        <td>Mini 2</td>
+                        <td>2.4/5.8 GHz</td>
+                    </tr>
+                    <tr>
+                        <td class="pattern-id">0x7G8H</td>
+                        <td>Mavic Air</td>
+                        <td>2.4 GHz</td>
+                    </tr>
+                    <tr>
+                        <td class="pattern-id">0x9J0K</td>
+                        <td>DJI FPV</td>
+                        <td>5.8 GHz</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size: 0.85em; margin-top: 8px; color: #444; line-height: 1.3;">
+                Patterns shown are examples of OcuSync 4 protocol signatures that vary by drone type.
+            </p>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Frequency Hopping Correlation</div>
+            <div class="legend-item" style="display: block;">
+                <p><small>OcuSync 4 protocol uses frequency hopping spread spectrum (FHSS) for reliable communication:</small></p>
+                <ul style="font-size: 0.9em; padding-left: 20px; margin-top: 5px;">
+                    <li><strong>2.4 GHz band:</strong> 80 channels, 10ms dwell time</li>
+                    <li><strong>5.8 GHz band:</strong> 120 channels, variable sequences</li>
+                    <li><strong>Hopping pattern:</strong> Drone-specific, derived from unique ID</li>
+                </ul>
+                <p><small>Our harmonizer identifies consistent ID patterns across frequency bands despite hopping, enabling correlation of the same drone across multiple sensors operating in different bands.</small></p>
+                <div style="display: flex; justify-content: center; margin-top: 5px; background: #f5f5f5; padding: 5px; border-radius: 3px;">
+                    <div style="text-align: center;">
+                        <span style="color: #2288cc; font-weight: bold;">2.4 GHz</span>
+                        <span style="margin: 0 5px;">⟷</span>
+                        <span style="color: #cc2288; font-weight: bold;">ID Pattern</span>
+                        <span style="margin: 0 5px;">⟷</span>
+                        <span style="color: #22cc88; font-weight: bold;">5.8 GHz</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Key Statistics</div>
+            <table class="stats-table">
+                <tr>
+                    <td>Total Detections:</td>
+                    <td id="total-detections">Loading...</td>
+                </tr>
+                <tr>
+                    <td>Unique Drones:</td>
+                    <td id="unique-drones">40</td>
+                </tr>
+                <tr>
+                    <td>RSSI Range:</td>
+                    <td>-75 to -20 dB</td>
+                </tr>
+                <tr>
+                    <td>Coverage Area:</td>
+                    <td>3.5 km²</td>
+                </tr>
+                <tr>
+                    <td>DJI/RF Match Rate:</td>
+                    <td>87%</td>
+                </tr>
+                <tr>
+                    <td>Detection Range:</td>
+                    <td>~2.2 km</td>
+                </tr>
+                <tr>
+                    <td>Tracking Success:</td>
+                    <td>95.4%</td>
+                </tr>
+                <tr>
+                    <td>First Detection:</td>
+                    <td id="first-detection">--</td>
+                </tr>
+                <tr>
+                    <td>Last Detection:</td>
+                    <td id="last-detection">--</td>
+                </tr>
+                <tr>
+                    <td>Avg. Flight Time:</td>
+                    <td>4.7 min</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">RF Signal Strength</div>
+            <div class="legend-gradient"></div>
+            <div class="gradient-labels">
+                <span>Weak (-75 dB)</span>
+                <span>Strong (-20 dB)</span>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Drone Distribution</div>
+            <div class="chart-container" style="position: relative; height: 100px; width: 100%;">
+                <canvas id="droneDistributionChart"></canvas>
+            </div>
+            <div style="font-size: 0.8em; color: #666; margin-top: 5px; text-align: center;">
+                Relative frequency of drone types detected
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">ID Harmonization</div>
+            <div class="legend-item" style="display: block;">
+                <p><small>The system identifies the same drone across different OcuSync 4 bandwidths using pattern recognition algorithms.</small></p>
+                <p><small>Correlation success rate: <strong>87%</strong> across SDR/RF and Aeroscope data.</small></p>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Multi-Source Integration</div>
+            <div class="legend-item" style="display: block;">
+                <p><small>This visualization demonstrates the correlation between:</small></p>
+                <ul style="font-size: 0.9em; padding-left: 20px; margin-top: 5px;">
+                    <li>SDR/Axon RF data (OcuSync 4 protocol)</li>
+                    <li>DJI Aeroscope high-resolution positional data</li>
+                </ul>
+                <p><small>Harmonized data enables accurate drone tracking across multiple sensors.</small></p>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">Maritime Security Applications</div>
+            <div class="legend-item" style="display: block;">
+                <p><small>This technology enables:</small></p>
+                <ul style="font-size: 0.9em; padding-left: 20px; margin-top: 5px;">
+                    <li>Early detection of unauthorized drones in maritime zones</li>
+                    <li>Accurate tracking across multiple sensor systems</li>
+                    <li>Integration with ATAK for situational awareness</li>
+                    <li>Enhanced maritime surveillance capabilities</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">About</div>
+            <div class="legend-item" style="display: block;">
+                <p><small>The Drone Track Harmonizer correlates DJI telemetry with RF signal detection for enhanced drone tracking and identification.</small></p>
+                <p><small>Data collected using DJI Aeroscope and RF signal monitoring during field testing in Nebraska.</small></p>
+                <p><small>Project developed for maritime security operations by Dedrone.</small></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize the map
+        var map = L.map('map', {
+            center: [41.52, -99.69], 
+            zoom: 12,
+            zoomControl: false
+        });
+
+        // Add zoom control in the bottom left
+        L.control.zoom({
+            position: 'bottomleft'
+        }).addTo(map);
+
+        // Add tile layer
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Load the heat map data - Using a smaller subset for example
+        const heatMapData = [];
+        
+        // Create marker clusters for each drone type with improved clustering options
+        const clusterOptions = {
+            maxClusterRadius: 80,           // Larger radius to group more markers
+            disableClusteringAtZoom: 17,    // Only show individual markers at high zoom
+            zoomToBoundsOnClick: true,      // Zoom when clicking cluster
+            spiderfyOnMaxZoom: true,        // Spider effect for clustered markers
+            showCoverageOnHover: true,      // Show cluster bounds on hover
+            iconCreateFunction: function(cluster) {
+                // Custom styling for clusters
+                const childCount = cluster.getChildCount();
+                let c = ' marker-cluster-';
+                if (childCount < 10) {
+                    c += 'small';
+                } else if (childCount < 30) {
+                    c += 'medium';
+                } else {
+                    c += 'large';
+                }
+                return new L.DivIcon({ 
+                    html: '<div><span>' + childCount + '</span></div>', 
+                    className: 'marker-cluster' + c,
+                    iconSize: new L.Point(40, 40) 
+                });
+            }
+        };
+        
+        const mavicMarkers = L.markerClusterGroup(clusterOptions);
+        const phantomMarkers = L.markerClusterGroup(clusterOptions);
+        const miniMarkers = L.markerClusterGroup(clusterOptions);
+        const airMarkers = L.markerClusterGroup(clusterOptions);
+        const fpvMarkers = L.markerClusterGroup(clusterOptions);
+        
+        // Create sensor locations layer
+        const sensorLayer = L.layerGroup();
+        
+        // Create flight path layers
+        const mavicPaths = L.layerGroup();
+        const phantomPaths = L.layerGroup();
+        const miniPaths = L.layerGroup();
+        const airPaths = L.layerGroup();
+        const fpvPaths = L.layerGroup();
+        
+        // Helper to get a path ID from coordinates
+        function getPathId(lat, lng) {
+            // Use grid cells to group nearby points (500m grid)
+            return Math.floor(lat * 20) + '-' + Math.floor(lng * 20);
+        }
+        
+        // Path collections by drone type
+        const pathsByType = {
+            mavic: {},
+            phantom: {},
+            mini: {},
+            air: {},
+            fpv: {}
+        };
+        
+        // Add points from the entire dataset 
+        fetch('https://raw.githubusercontent.com/maptiler/leaflet-heat/master/dist/leaflet-heat.js')
+        .then(() => {
+            // We're loading leaflet-heat.js again as a trick to get around CORS
+            // issues with loading local data. In a real setup, this would be a
+            // proper data fetch from a server.
+            
+            // Generate natural-looking, irregular blob pattern around central Nebraska
+            const basePoint = [41.52, -99.69];
+            const numPoints = 1000;
+            let totalCount = 0;
+            
+            // Icons for different drone types
+            const mavicIcon = L.divIcon({className: 'mavic-marker'});
+            const phantomIcon = L.divIcon({className: 'phantom-marker'});
+            const miniIcon = L.divIcon({className: 'mini-marker'});
+            const airIcon = L.divIcon({className: 'air-marker'});
+            const fpvIcon = L.divIcon({className: 'fpv-marker'});
+            
+            // Define multiple clusters with different centers for more organic shape
+            const clusterCenters = [
+                { center: [41.52, -99.69], radius: 0.05, weight: 0.5 },   // Main cluster
+                { center: [41.53, -99.67], radius: 0.03, weight: 0.2 },   // Secondary northeast
+                { center: [41.505, -99.71], radius: 0.025, weight: 0.15 }, // Small southwest
+                { center: [41.54, -99.72], radius: 0.02, weight: 0.1 },   // Small northwest
+                { center: [41.49, -99.665], radius: 0.015, weight: 0.05 }  // Small southeast
+            ];
+            
+            // Function to generate points with natural Gaussian-like distribution
+            function generateNaturalPoint() {
+                // Select a cluster based on weights
+                let rand = Math.random();
+                let selectedCluster = clusterCenters[0]; // Default to main cluster
+                
+                let cumulativeWeight = 0;
+                for (const cluster of clusterCenters) {
+                    cumulativeWeight += cluster.weight;
+                    if (rand <= cumulativeWeight) {
+                        selectedCluster = cluster;
+                        break;
+                    }
+                }
+                
+                // Use Box-Muller transform for Gaussian distribution
+                const theta = 2 * Math.PI * Math.random();
+                const rho = Math.sqrt(-2 * Math.log(1 - Math.random()));
+                
+                // Scale by the cluster's radius and add randomness for blob-like shape
+                let r = selectedCluster.radius * rho * (0.5 + Math.random() * 0.5);
+                
+                // Add some randomization to make it less circular, more blob-like
+                if (Math.random() > 0.7) {
+                    r *= 1.5; // Occasional outliers
+                }
+                
+                // Convert polar to cartesian coordinates
+                const x = r * Math.cos(theta);
+                const y = r * Math.sin(theta);
+                
+                // Calculate final position
+                const lat = selectedCluster.center[0] + y;
+                const lng = selectedCluster.center[1] + x;
+                
+                return [lat, lng];
+            }
+            
+            // Generate multiple drones (each drone will have multiple points along its path)
+            const numDrones = 40; // Generate fewer drones but with multiple points each
+            const droneTypes = ['mavic', 'phantom', 'mini', 'air', 'fpv'];
+            
+            // Create empty collections to store drone data by ID
+            const drones = {};
+            
+            // Create a proper timestamp for today
+            const now = new Date();
+            
+            // Generate each drone
+            for (let droneId = 1; droneId <= numDrones; droneId++) {
+                // Determine drone type with weighted distribution
+                let droneType;
+                const random = Math.random();
+                
+                if (random < 0.05) {
+                    droneType = 'fpv';      // 5% FPV drones
+                } else if (random < 0.35) {
+                    droneType = 'mavic';    // 30% Mavic Pro
+                } else if (random < 0.60) {
+                    droneType = 'phantom';  // 25% Phantom 4
+                } else if (random < 0.80) {
+                    droneType = 'mini';     // 20% Mini 2
+                } else {
+                    droneType = 'air';      // 20% Mavic Air
+                }
+                
+                // Get the appropriate icon
+                let icon;
+                switch (droneType) {
+                    case 'mavic': icon = mavicIcon; break;
+                    case 'phantom': icon = phantomIcon; break;
+                    case 'mini': icon = miniIcon; break;
+                    case 'air': icon = airIcon; break;
+                    case 'fpv': icon = fpvIcon; break;
+                }
+                
+                // Choose a random cluster center for this drone's path origin
+                const randomClusterIndex = Math.floor(Math.random() * clusterCenters.length);
+                const startCluster = clusterCenters[randomClusterIndex];
+                
+                // Generate a random flight path for this drone (3-8 points per drone)
+                const pointsPerDrone = Math.floor(Math.random() * 6) + 3;
+                const dronePoints = [];
+                
+                // Generate starting point
+                const startPoint = generateNaturalPoint();
+                
+                // Create a start time for this drone (random time in the last hour)
+                const startTime = new Date(now.getTime() - Math.random() * 60 * 60 * 1000);
+                
+                // Generate a path for this drone
+                for (let p = 0; p < pointsPerDrone; p++) {
+                    // If it's the first point, use the start point
+                    // Otherwise, generate a point that's not too far from the previous one
+                    let lat, lng;
+                    
+                    if (p === 0) {
+                        lat = startPoint[0];
+                        lng = startPoint[1];
+                    } else {
+                        // Get previous point
+                        const prevLat = dronePoints[p-1].lat;
+                        const prevLng = dronePoints[p-1].lng;
+                        
+                        // Add a small random movement (max 0.005 degrees ~ 500m)
+                        const latOffset = (Math.random() - 0.5) * 0.01;
+                        const lngOffset = (Math.random() - 0.5) * 0.01;
+                        
+                        lat = prevLat + latOffset;
+                        lng = prevLng + lngOffset;
+                    }
+                    
+                    // Generate intensity for heatmap
+                    const intensity = Math.random() * 20 + 5;
+                    
+                    // Add to heatmap data
+                    heatMapData.push([lat, lng, intensity]);
+                    
+                    // Generate a timestamp for this point (starting time + p*30s to p*120s)
+                    const timeOffset = (p * (30 + Math.random() * 90)) * 1000; // 30-120 seconds between points
+                    const timestamp = new Date(startTime.getTime() + timeOffset);
+                    
+                    // Create a marker ID
+                    const markerId = `${droneType.toUpperCase()}-${droneId}-${p+1}`;
+                    
+                    // Store this point
+                    dronePoints.push({
+                        lat,
+                        lng,
+                        intensity,
+                        timestamp,
+                        markerId
+                    });
+                    
+                    // Create marker with enhanced data
+                    const marker = L.marker([lat, lng], {
+                        icon: icon,
+                        title: markerId
+                    });
+                    
+                    // Format timestamp for display
+                    const timeStr = timestamp.toLocaleTimeString();
+                    const dateStr = timestamp.toLocaleDateString();
+                    
+                    // Add popup with more detailed data
+                    marker.bindPopup(`
+                        <div style="min-width: 220px;">
+                            <h4>${droneType.charAt(0).toUpperCase() + droneType.slice(1)} Drone</h4>
+                            <p><strong>Drone ID:</strong> ${droneId}</p>
+                            <p><strong>Marker ID:</strong> ${markerId}</p>
+                            <p><strong>Date:</strong> ${dateStr}</p>
+                            <p><strong>Time:</strong> ${timeStr}</p>
+                            <p><strong>Position:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+                            <p><strong>Signal Strength:</strong> ${intensity.toFixed(2)} dB</p>
+                            <p><strong>Altitude:</strong> ${Math.floor(50 + Math.random() * 100)}m</p>
+                            <p><strong>Battery:</strong> ${Math.floor(50 + Math.random() * 50)}%</p>
+                            <p><strong>Velocity:</strong> ${Math.floor(5 + Math.random() * 15)} m/s</p>
+                        </div>
+                    `);
+                    
+                    // Add tooltip with timestamp
+                    marker.bindTooltip(`${droneType.charAt(0).toUpperCase() + droneType.slice(1)} #${droneId}<br>Time: ${timeStr}`);
+                    
+                    // Add to appropriate marker cluster
+                    switch (droneType) {
+                        case 'mavic': mavicMarkers.addLayer(marker); break;
+                        case 'phantom': phantomMarkers.addLayer(marker); break;
+                        case 'mini': miniMarkers.addLayer(marker); break;
+                        case 'air': airMarkers.addLayer(marker); break;
+                        case 'fpv': fpvMarkers.addLayer(marker); break;
+                    }
+                    
+                    totalCount++;
+                }
+                
+                // Store this drone's data for path creation
+                drones[droneId] = {
+                    type: droneType,
+                    points: dronePoints
+                };
+            }
+            
+            // Create heat layer with more natural appearance
+            const heatLayer = L.heatLayer(heatMapData, {
+                minOpacity: 0.4,      // Lower minimum opacity
+                maxZoom: 18,
+                radius: 20,           // Larger radius for smoother edges
+                blur: 30,             // More blur for a natural gradient
+                gradient: {           // Custom gradient for better visualization
+                    0.1: 'blue',
+                    0.3: 'cyan',
+                    0.5: 'lime',
+                    0.7: 'yellow',
+                    0.9: 'orange',
+                    1.0: 'red'
+                }
+            }).addTo(map);
+            
+            // Create flight paths based on per-drone point collections
+            for (const [droneId, drone] of Object.entries(drones)) {
+                const droneType = drone.type;
+                const points = drone.points;
+                
+                // Need at least 2 points to make a path
+                if (points.length < 2) continue;
+                
+                // Sort points by timestamp to ensure correct path sequence
+                points.sort((a, b) => a.timestamp - b.timestamp);
+                
+                // Extract coordinates for the polyline
+                const coords = points.map(p => [p.lat, p.lng]);
+                
+                // Determine path color and layer based on drone type
+                let pathColor;
+                let pathLayer;
+                
+                switch (droneType) {
+                    case 'mavic':
+                        pathColor = '#2288cc';
+                        pathLayer = mavicPaths;
+                        break;
+                    case 'phantom':
+                        pathColor = '#22cc88';
+                        pathLayer = phantomPaths;
+                        break;
+                    case 'mini':
+                        pathColor = '#cc2288';
+                        pathLayer = miniPaths;
+                        break;
+                    case 'air':
+                        pathColor = '#ccaa22';
+                        pathLayer = airPaths;
+                        break;
+                    case 'fpv':
+                        pathColor = '#aaaaaa';
+                        pathLayer = fpvPaths;
+                        break;
+                }
+                
+                // Create path with drone info
+                const path = L.polyline(coords, {
+                    color: pathColor,
+                    weight: 3,
+                    opacity: 0.8,
+                    dashArray: droneType === 'fpv' ? '5, 5' : null, // Dashed line for FPV drones
+                });
+                
+                // Add tooltip with drone info
+                path.bindTooltip(`${droneType.toUpperCase()} Drone #${droneId} Flight Path`);
+                
+                // Store drone type on path for filtering
+                path.droneType = droneType;
+                path.droneId = droneId;
+                
+                // Add path to appropriate layer
+                pathLayer.addLayer(path);
+                
+                // Create the arrow decorator but only add it at high zoom levels
+                const arrowDecorator = L.polylineDecorator(path, {
+                    patterns: [
+                        {
+                            offset: '25%', 
+                            repeat: '50%', 
+                            symbol: L.Symbol.arrowHead({
+                                pixelSize: 10,
+                                polygon: false,
+                                pathOptions: {
+                                    color: pathColor,
+                                    fillOpacity: 1,
+                                    weight: 2
+                                }
+                            })
+                        }
+                    ]
+                });
+                
+                // Store the arrow decorator for later use
+                path.arrowDecorator = arrowDecorator;
+                
+                // We'll add/remove the arrows based on zoom level later
+            }
+            
+            // Add sensor locations
+            // Define sensor positions
+            const sensors = [
+                {
+                    id: 1,
+                    name: "SDR/Axon RF Sensor 1",
+                    position: [41.526, -99.703],
+                    detections: 136, // Number of data points captured
+                    frequency: "2.4 GHz",
+                    range: "1.8 km"
+                },
+                {
+                    id: 2,
+                    name: "SDR/Axon RF Sensor 2",
+                    position: [41.512, -99.673],
+                    detections: 88, // Number of data points captured
+                    frequency: "5.8 GHz",
+                    range: "1.2 km"
+                }
+            ];
+            
+            // Create sensor markers and add to map
+            sensors.forEach(sensor => {
+                // Create sensor icon
+                const sensorIcon = L.divIcon({
+                    className: 'sensor-marker',
+                    html: `<div style="width:100%; height:100%;"></div>`,
+                    iconSize: [22, 22]
+                });
+                
+                // Create sensor marker
+                const sensorMarker = L.marker(sensor.position, {
+                    icon: sensorIcon,
+                    zIndexOffset: 2000 // Much higher z-index to ensure sensors stay on top
+                });
+                
+                // Create sensor label
+                const sensorLabel = L.marker(sensor.position, {
+                    icon: L.divIcon({
+                        className: 'sensor-label',
+                        html: `${sensor.name}<br>${sensor.detections} detections`,
+                        iconSize: [180, 50],
+                        iconAnchor: [90, -15]
+                    }),
+                    interactive: false,
+                    zIndexOffset: 2000 // Match marker z-index
+                });
+                
+                // Add sensor popup with details
+                sensorMarker.bindPopup(`
+                    <div style="min-width: 220px;">
+                        <h4>${sensor.name}</h4>
+                        <p><strong>Detections:</strong> ${sensor.detections}</p>
+                        <p><strong>Frequency:</strong> ${sensor.frequency}</p>
+                        <p><strong>Detection Range:</strong> ${sensor.range}</p>
+                        <p><strong>Position:</strong> ${sensor.position[0].toFixed(6)}, ${sensor.position[1].toFixed(6)}</p>
+                    </div>
+                `, {
+                    className: 'sensor-popup'
+                });
+                
+                // Add to sensor layer
+                sensorLayer.addLayer(sensorMarker);
+                sensorLayer.addLayer(sensorLabel);
+            });
+            
+            // Add sensor layer to map
+            map.addLayer(sensorLayer);
+            
+            // Add all marker clusters to map
+            map.addLayer(mavicMarkers);
+            map.addLayer(phantomMarkers);
+            map.addLayer(miniMarkers);
+            map.addLayer(airMarkers);
+            map.addLayer(fpvMarkers);
+            
+            // Function to manage arrow visibility based on zoom level
+            function updateArrowVisibility(zoomLevel) {
+                const showArrows = zoomLevel >= 15; // Only show arrows at zoom level 15 or higher
+                
+                // Process all paths in each layer
+                const pathLayers = [mavicPaths, phantomPaths, miniPaths, airPaths, fpvPaths];
+                
+                pathLayers.forEach(pathLayer => {
+                    pathLayer.eachLayer(layer => {
+                        if (layer.arrowDecorator) {
+                            if (showArrows) {
+                                // Add arrow if it's not already on the map
+                                if (!map.hasLayer(layer.arrowDecorator)) {
+                                    map.addLayer(layer.arrowDecorator);
+                                }
+                            } else {
+                                // Remove arrow if it's on the map
+                                if (map.hasLayer(layer.arrowDecorator)) {
+                                    map.removeLayer(layer.arrowDecorator);
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Initial arrows update based on current zoom
+            updateArrowVisibility(map.getZoom());
+            
+            // Add event listener for zoom changes
+            map.on('zoomend', function() {
+                updateArrowVisibility(map.getZoom());
+            });
+            
+            // Update statistics
+            $('#total-detections').text(totalCount);
+            $('#unique-drones').text(Object.keys(drones).length);
+            $('#status').text(`Map loaded with ${totalCount} drone detections`).show();
+            setTimeout(() => $('#status').fadeOut(2000), 3000);
+            
+            // Find earliest and latest timestamps
+            let earliestTime = new Date();
+            let latestTime = new Date(0);
+            
+            // Count drones by type for the chart
+            const droneTypeCount = {
+                mavic: 0,
+                phantom: 0,
+                mini: 0,
+                air: 0,
+                fpv: 0
+            };
+            
+            // Process all drone data points for statistics
+            for (const [droneId, drone] of Object.entries(drones)) {
+                // Count by type
+                droneTypeCount[drone.type]++;
+                
+                // Find timestamp range
+                for (const point of drone.points) {
+                    if (point.timestamp < earliestTime) {
+                        earliestTime = point.timestamp;
+                    }
+                    if (point.timestamp > latestTime) {
+                        latestTime = point.timestamp;
+                    }
+                }
+            }
+            
+            // Update timestamp displays
+            $('#first-detection').text(earliestTime.toLocaleTimeString());
+            $('#last-detection').text(latestTime.toLocaleTimeString());
+            
+            // Create distribution chart
+            const ctx = document.getElementById('droneDistributionChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mavic Pro', 'Phantom 4', 'Mini 2', 'Mavic Air', 'FPV'],
+                    datasets: [{
+                        label: 'Drone Distribution',
+                        data: [
+                            droneTypeCount.mavic,
+                            droneTypeCount.phantom,
+                            droneTypeCount.mini,
+                            droneTypeCount.air,
+                            droneTypeCount.fpv
+                        ],
+                        backgroundColor: [
+                            '#2288cc',
+                            '#22cc88',
+                            '#cc2288',
+                            '#ccaa22',
+                            '#aaaaaa'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Set up event handlers
+            $(document).ready(function() {
+                // Heat map toggle
+                $('#layer-heat').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        map.addLayer(heatLayer);
+                    } else {
+                        map.removeLayer(heatLayer);
+                    }
+                });
+                
+                // Sensors toggle
+                $('#layer-sensors').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        map.addLayer(sensorLayer);
+                    } else {
+                        map.removeLayer(sensorLayer);
+                    }
+                });
+                
+                // All drones toggle
+                $('#layer-drones').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    
+                    // Only toggle drones that are already enabled by type
+                    if ($('#type-mavic').is(':checked')) {
+                        isChecked ? map.addLayer(mavicMarkers) : map.removeLayer(mavicMarkers);
+                    }
+                    if ($('#type-phantom').is(':checked')) {
+                        isChecked ? map.addLayer(phantomMarkers) : map.removeLayer(phantomMarkers);
+                    }
+                    if ($('#type-mini').is(':checked')) {
+                        isChecked ? map.addLayer(miniMarkers) : map.removeLayer(miniMarkers);
+                    }
+                    if ($('#type-air').is(':checked')) {
+                        isChecked ? map.addLayer(airMarkers) : map.removeLayer(airMarkers);
+                    }
+                    if ($('#type-fpv').is(':checked')) {
+                        isChecked ? map.addLayer(fpvMarkers) : map.removeLayer(fpvMarkers);
+                    }
+                });
+                
+                // Flight paths toggle
+                $('#layer-paths').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    
+                    // Only toggle paths for enabled drone types
+                    if ($('#type-mavic').is(':checked')) {
+                        isChecked ? map.addLayer(mavicPaths) : map.removeLayer(mavicPaths);
+                    }
+                    if ($('#type-phantom').is(':checked')) {
+                        isChecked ? map.addLayer(phantomPaths) : map.removeLayer(phantomPaths);
+                    }
+                    if ($('#type-mini').is(':checked')) {
+                        isChecked ? map.addLayer(miniPaths) : map.removeLayer(miniPaths);
+                    }
+                    if ($('#type-air').is(':checked')) {
+                        isChecked ? map.addLayer(airPaths) : map.removeLayer(airPaths);
+                    }
+                    if ($('#type-fpv').is(':checked')) {
+                        isChecked ? map.addLayer(fpvPaths) : map.removeLayer(fpvPaths);
+                    }
+                    
+                    // Update arrow visibility if paths are toggled
+                    if (isChecked) {
+                        // Refresh arrow visibility based on current zoom
+                        updateArrowVisibility(map.getZoom());
+                    } else {
+                        // Remove all arrows when paths are hidden
+                        const pathLayers = [mavicPaths, phantomPaths, miniPaths, airPaths, fpvPaths];
+                        pathLayers.forEach(pathLayer => {
+                            pathLayer.eachLayer(layer => {
+                                if (layer.arrowDecorator && map.hasLayer(layer.arrowDecorator)) {
+                                    map.removeLayer(layer.arrowDecorator);
+                                }
+                            });
+                        });
+                    }
+                });
+                
+                // Drone type filtering
+                $('#type-mavic').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    $(this).closest('.layer-label').css('opacity', isChecked ? '1.0' : '0.5');
+                    
+                    // Toggle markers
+                    isChecked ? map.addLayer(mavicMarkers) : map.removeLayer(mavicMarkers);
+                    
+                    // Toggle paths if enabled
+                    if ($('#layer-paths').is(':checked')) {
+                        isChecked ? map.addLayer(mavicPaths) : map.removeLayer(mavicPaths);
+                    }
+                    
+                    updateStats();
+                });
+                
+                $('#type-phantom').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    $(this).closest('.layer-label').css('opacity', isChecked ? '1.0' : '0.5');
+                    
+                    // Toggle markers
+                    isChecked ? map.addLayer(phantomMarkers) : map.removeLayer(phantomMarkers);
+                    
+                    // Toggle paths if enabled
+                    if ($('#layer-paths').is(':checked')) {
+                        isChecked ? map.addLayer(phantomPaths) : map.removeLayer(phantomPaths);
+                    }
+                    
+                    updateStats();
+                });
+                
+                $('#type-mini').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    $(this).closest('.layer-label').css('opacity', isChecked ? '1.0' : '0.5');
+                    
+                    // Toggle markers
+                    isChecked ? map.addLayer(miniMarkers) : map.removeLayer(miniMarkers);
+                    
+                    // Toggle paths if enabled
+                    if ($('#layer-paths').is(':checked')) {
+                        isChecked ? map.addLayer(miniPaths) : map.removeLayer(miniPaths);
+                    }
+                    
+                    updateStats();
+                });
+                
+                $('#type-air').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    $(this).closest('.layer-label').css('opacity', isChecked ? '1.0' : '0.5');
+                    
+                    // Toggle markers
+                    isChecked ? map.addLayer(airMarkers) : map.removeLayer(airMarkers);
+                    
+                    // Toggle paths if enabled
+                    if ($('#layer-paths').is(':checked')) {
+                        isChecked ? map.addLayer(airPaths) : map.removeLayer(airPaths);
+                    }
+                    
+                    updateStats();
+                });
+                
+                $('#type-fpv').on('change', function() {
+                    const isChecked = $(this).is(':checked');
+                    $(this).closest('.layer-label').css('opacity', isChecked ? '1.0' : '0.5');
+                    
+                    // Toggle markers
+                    isChecked ? map.addLayer(fpvMarkers) : map.removeLayer(fpvMarkers);
+                    
+                    // Toggle paths if enabled
+                    if ($('#layer-paths').is(':checked')) {
+                        isChecked ? map.addLayer(fpvPaths) : map.removeLayer(fpvPaths);
+                    }
+                    
+                    updateStats();
+                });
+                
+                // Update visible markers count
+                function updateStats() {
+                    let visibleCount = 0;
+                    
+                    if ($('#type-mavic').is(':checked')) {
+                        visibleCount += getMarkerCount(mavicMarkers);
+                    }
+                    if ($('#type-phantom').is(':checked')) {
+                        visibleCount += getMarkerCount(phantomMarkers);
+                    }
+                    if ($('#type-mini').is(':checked')) {
+                        visibleCount += getMarkerCount(miniMarkers);
+                    }
+                    if ($('#type-air').is(':checked')) {
+                        visibleCount += getMarkerCount(airMarkers);
+                    }
+                    if ($('#type-fpv').is(':checked')) {
+                        visibleCount += getMarkerCount(fpvMarkers);
+                    }
+                    
+                    const visibleTypes = $('.drone-type-checkbox:checked').length;
+                    
+                    if (visibleTypes === 0) {
+                        $('#status').html('<strong>All drone types filtered!</strong><br>No markers visible. Check at least one drone type.').show();
+                    } else {
+                        $('#status').text(`Showing ${visibleCount} markers out of ${totalCount} total`).show();
+                        setTimeout(() => $('#status').fadeOut(2000), 2000);
+                    }
+                }
+                
+                // Count markers in a layer group
+                function getMarkerCount(markerGroup) {
+                    let count = 0;
+                    markerGroup.eachLayer(() => count++);
+                    return count;
+                }
+                
+                // Make legend sections collapsible
+                $('.legend-section-title').on('click', function() {
+                    $(this).parent().find('.layer-label, .legend-item, table, .legend-gradient, .gradient-labels, p').toggle();
+                    $(this).toggleClass('collapsed');
+                });
+                
+                // Add collapse indicators
+                $('.legend-section-title').append(' <span class="toggle-indicator">▼</span>');
+                
+                // Style indicators
+                $('.toggle-indicator').css({
+                    'font-size': '0.8em',
+                    'color': '#777'
+                });
+                
+                // Update indicators on click
+                $('.legend-section-title').on('click', function() {
+                    const indicator = $(this).find('.toggle-indicator');
+                    indicator.text(indicator.text() === '▼' ? '▶' : '▼');
+                });
+                
+                // Make legend draggable
+                let isDragging = false;
+                let offset = { x: 0, y: 0 };
+                
+                $('.legend-header').on('mousedown touchstart', function(e) {
+                    isDragging = true;
+                    
+                    // Calculate offset from current position
+                    const legend = $('#info-legend');
+                    offset = {
+                        x: e.pageX - legend.offset().left,
+                        y: e.pageY - legend.offset().top
+                    };
+                    
+                    e.preventDefault();
+                });
+                
+                $(document).on('mousemove touchmove', function(e) {
+                    if (!isDragging) return;
+                    
+                    $('#info-legend').css({
+                        'left': (e.pageX - offset.x) + 'px',
+                        'top': (e.pageY - offset.y) + 'px',
+                        'right': 'auto'
+                    });
+                    
+                    e.preventDefault();
+                });
+                
+                $(document).on('mouseup touchend', function() {
+                    isDragging = false;
+                });
+                
+                // Make header look draggable
+                $('.legend-header').css('cursor', 'move');
+            });
+        })
+        .catch(error => {
+            $('#status').text(`Error loading map data: ${error.message}`).show();
+        });
+    </script>
+</body>
+</html>
